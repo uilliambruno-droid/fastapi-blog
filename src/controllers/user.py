@@ -1,0 +1,25 @@
+from fastapi import APIRouter, Depends, status
+
+from src.dependencies import get_current_user
+from src.schemas.token import Token
+from src.schemas.user import TokenRequest, UserCreate
+from src.services.user import authenticate_user, create_user
+from src.utils.auth import create_access_token
+from src.views.user import UserOut
+
+router = APIRouter()
+protected_router = APIRouter(dependencies=[Depends(get_current_user)])
+
+
+@router.post("/auth/token", response_model=Token)
+async def login(credentials: TokenRequest):
+    user = await authenticate_user(credentials.username, credentials.password)
+    token = create_access_token({"sub": user["username"]})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@protected_router.post(
+    "/users/", response_model=UserOut, status_code=status.HTTP_201_CREATED
+)
+async def register_user(user: UserCreate):
+    return await create_user(user)
