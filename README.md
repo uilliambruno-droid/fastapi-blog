@@ -1,76 +1,76 @@
 # FastAPI Blog API
 
-API REST assíncrona com FastAPI para autenticação JWT, gestão de usuários e CRUD de posts com autorização por proprietário.
+Asynchronous REST API built with FastAPI for JWT authentication, user management, and post CRUD with owner-based authorization.
 
-## Principais recursos
+## Key Features
 
-- Login com JWT (`/auth/token`)
-- Rotas públicas para leitura de posts
-- Rotas protegidas para criar/editar/deletar posts
-- Regra de autorização por dono do post (ou `admin`)
-- Seed opcional de usuário admin via configuração
-- Testes unitários + integração com alta cobertura
+- JWT login (`/auth/token`)
+- Public routes for reading posts
+- Protected routes for creating/updating/deleting posts
+- Owner-based authorization rules for posts (or `admin` override)
+- Optional admin user seeding via configuration
+- Unit + integration tests with high coverage
 
-## Arquitetura
+## Architecture
 
-Estrutura em camadas:
+Layered structure:
 
-- `src/controllers`: endpoints HTTP e composição das dependências
-- `src/services`: regras de negócio
-- `src/models`: tabelas SQLAlchemy
-- `src/schemas`: contratos de entrada (Pydantic)
-- `src/views`: contratos de saída
-- `src/dependencies`: autenticação/autorização reutilizável
-- `src/utils`: utilitários (JWT e senha)
-- `src/config.py`: configurações por ambiente
+- `src/controllers`: HTTP endpoints and dependency composition
+- `src/services`: business rules
+- `src/models`: SQLAlchemy table definitions
+- `src/schemas`: input contracts (Pydantic)
+- `src/views`: output contracts
+- `src/dependencies`: reusable authentication/authorization dependencies
+- `src/utils`: utilities (JWT and password helpers)
+- `src/config.py`: environment-based settings
 
-## Requisitos
+## Requirements
 
 - Python `>=3.14`
 - Poetry `>=2.x`
 
-## Configuração de ambiente
+## Environment Configuration
 
-As configurações são lidas de variáveis de ambiente (com suporte a arquivo `.env`).
+Settings are read from environment variables (with `.env` file support).
 
-### Variáveis disponíveis
+### Available Variables
 
-| Variável | Padrão | Descrição |
+| Variable | Default | Description |
 |---|---|---|
-| `APP_ENV` | `development` | Ambiente (`development`, `test`, `production`) |
-| `DATABASE_URL` | `sqlite:///./blog.db` | String de conexão do banco |
-| `JWT_SECRET_KEY` | `change-me-in-production` | Chave JWT (obrigatória segura em produção) |
-| `JWT_ALGORITHM` | `HS256` | Algoritmo de assinatura JWT |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Expiração do token |
-| `SEED_ADMIN_ENABLED` | `true` | Habilita criação automática do admin |
-| `SEED_ADMIN_USERNAME` | `admin` | Usuário inicial |
-| `SEED_ADMIN_PASSWORD` | `admin` | Senha inicial |
+| `APP_ENV` | `development` | Environment (`development`, `test`, `production`) |
+| `DATABASE_URL` | `sqlite:///./blog.db` | Database connection string |
+| `JWT_SECRET_KEY` | `change-me-in-production` | JWT secret key (must be secure in production) |
+| `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token expiration time |
+| `SEED_ADMIN_ENABLED` | `true` | Enables automatic admin creation |
+| `SEED_ADMIN_USERNAME` | `admin` | Initial admin username |
+| `SEED_ADMIN_PASSWORD` | `admin` | Initial admin password |
 
-> Em `APP_ENV=production`, a aplicação falha no startup se `JWT_SECRET_KEY` estiver insegura.
+> In `APP_ENV=production`, application startup fails if `JWT_SECRET_KEY` is insecure.
 
-## Executando localmente
+## Running Locally
 
-1. Instale dependências:
+1. Install dependencies:
 
 ```zsh
 poetry lock
 poetry install --no-root
 ```
 
-2. (Opcional) Defina variáveis em `.env`.
+2. (Optional) Define variables in `.env`.
 
-3. Rode a API:
+3. Run the API:
 
 ```zsh
 poetry run uvicorn src.main:app --reload
 ```
 
-4. Abra documentação interativa:
+4. Open interactive API docs:
 
 - Swagger: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 
-## Fluxo rápido com cURL
+## Quick cURL Flow
 
 ### 1) Login
 
@@ -80,45 +80,45 @@ curl -s -X POST 'http://127.0.0.1:8000/auth/token' \
 	-d '{"username":"admin","password":"admin"}'
 ```
 
-### 2) Criar post (rota protegida)
+### 2) Create post (protected route)
 
 ```zsh
 curl -s -X POST 'http://127.0.0.1:8000/posts/' \
 	-H 'Authorization: Bearer <TOKEN>' \
 	-H 'Content-Type: application/json' \
-	-d '{"title":"Meu post","content":"Conteúdo","published":true}'
+	-d '{"title":"My post","content":"Content","published":true}'
 ```
 
-### 3) Listar posts (rota pública)
+### 3) List posts (public route)
 
 ```zsh
 curl -s 'http://127.0.0.1:8000/posts/?published=true&skip=0&limit=10'
 ```
 
-## Regras de autorização
+## Authorization Rules
 
-- `POST /posts/`: requer usuário autenticado.
+- `POST /posts/`: requires an authenticated user.
 - `PATCH /posts/{id}` e `DELETE /posts/{id}`:
-	- permitido para o dono do post;
-	- permitido para `admin`;
-	- demais usuários recebem `403`.
+	- allowed for the post owner;
+	- allowed for `admin`;
+	- all other users receive `403`.
 
-## Testes
+## Tests
 
-Rodar testes:
+Run tests:
 
 ```zsh
 poetry run pytest -q
 ```
 
-Rodar com cobertura:
+Run with coverage:
 
 ```zsh
 poetry run pytest --cov=src --cov-report=term-missing -q
 ```
 
-## Próximos passos recomendados
+## Recommended Next Steps
 
-- Adicionar migrações com Alembic para evolução de schema em produção
-- Adicionar observabilidade (logs estruturados e tracing)
-- Implementar refresh token e rotação de segredo JWT
+- Add Alembic migrations for production schema evolution
+- Add observability (structured logs and tracing)
+- Implement refresh tokens and JWT secret rotation
