@@ -1,8 +1,8 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException
 
+from src.exceptions import ForbiddenError, NotFoundError
 from src.schemas.post import PostUpdate
 from src.services import post as post_service
 
@@ -13,10 +13,10 @@ async def test_get_post_by_id_not_found(mocker):
         "src.services.post.database.fetch_one", new=AsyncMock(return_value=None)
     )
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(NotFoundError) as exc:
         await post_service.get_post_by_id(999)
 
-    assert exc.value.status_code == 404
+    assert "not found" in exc.value.detail.lower()
 
 
 @pytest.mark.asyncio
@@ -62,11 +62,11 @@ async def test_patch_post_forbidden_for_non_owner(mocker):
         new=AsyncMock(return_value={"id": 2, "author_id": 1}),
     )
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ForbiddenError) as exc:
         await post_service.patch_post(
             2,
             PostUpdate(title="new"),
             current_user={"id": 99, "username": "intruder"},
         )
 
-    assert exc.value.status_code == 403
+    assert "not allowed" in exc.value.detail.lower()

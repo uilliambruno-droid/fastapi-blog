@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from src.dependencies import get_current_user
+from src.exceptions import ForbiddenError, NotFoundError
 from src.schemas.post import PostCreate, PostUpdate
 from src.services.post import (
     create_new_post,
@@ -29,12 +30,18 @@ async def read_posts(
 
 @router.get("/{post_id}", response_model=PostOut)
 async def get_post(post_id: int):
-    return await get_post_by_id(post_id)
+    try:
+        return await get_post_by_id(post_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.detail)
 
 
 @protected_router.post("/", response_model=PostOut, status_code=status.HTTP_201_CREATED)
 async def create_post(post: PostCreate, current_user=Depends(get_current_user)):
-    return await create_new_post(post, current_user)
+    try:
+        return await create_new_post(post, current_user)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.detail)
 
 
 @protected_router.patch("/{post_id}", response_model=PostOut)
@@ -43,10 +50,20 @@ async def update_post(
     post: PostUpdate,
     current_user=Depends(get_current_user),
 ):
-    return await patch_post(post_id, post, current_user)
+    try:
+        return await patch_post(post_id, post, current_user)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.detail)
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=exc.detail)
 
 
 @protected_router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(post_id: int, current_user=Depends(get_current_user)):
-    await remove_post(post_id, current_user)
+    try:
+        await remove_post(post_id, current_user)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.detail)
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=exc.detail)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

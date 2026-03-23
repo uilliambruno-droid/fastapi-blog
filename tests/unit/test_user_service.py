@@ -1,8 +1,8 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException
 
+from src.exceptions import ConflictError, UnauthorizedError
 from src.schemas.user import UserCreate
 from src.services import user as user_service
 
@@ -14,12 +14,12 @@ async def test_create_user_conflict_raises(mocker):
         new=AsyncMock(return_value={"id": 1, "username": "existing"}),
     )
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(ConflictError) as exc:
         await user_service.create_user(
             UserCreate(username="existing", password="12345")
         )
 
-    assert exc.value.status_code == 409
+    assert "already taken" in exc.value.detail.lower()
 
 
 @pytest.mark.asyncio
@@ -50,10 +50,10 @@ async def test_authenticate_user_invalid_credentials(mocker):
         new=AsyncMock(return_value=None),
     )
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(UnauthorizedError) as exc:
         await user_service.authenticate_user("nouser", "12345")
 
-    assert exc.value.status_code == 401
+    assert "incorrect" in exc.value.detail.lower()
 
 
 @pytest.mark.asyncio

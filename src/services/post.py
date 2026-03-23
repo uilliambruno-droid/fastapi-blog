@@ -1,6 +1,5 @@
-from fastapi import HTTPException, status
-
 from src.database import database
+from src.exceptions import ForbiddenError, NotFoundError
 from src.models.post import posts
 from src.schemas.post import PostCreate, PostUpdate
 
@@ -11,10 +10,7 @@ def _is_admin(current_user) -> bool:
 
 def _ensure_post_owner_or_admin(post, current_user):
     if post["author_id"] != current_user["id"] and not _is_admin(current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to modify this post",
-        )
+        raise ForbiddenError("You are not allowed to modify this post")
 
 
 def _post_by_id_query(post_id: int):
@@ -24,10 +20,7 @@ def _post_by_id_query(post_id: int):
 async def _fetch_post_or_404(post_id: int, detail: str = "Post not found"):
     post = await database.fetch_one(_post_by_id_query(post_id))
     if post is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=detail,
-        )
+        raise NotFoundError(detail)
     return post
 
 
