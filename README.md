@@ -4,25 +4,30 @@ Asynchronous REST API built with FastAPI for JWT authentication, user management
 
 ## Key Features
 
-- JWT login (`/auth/token`)
-- Public routes for reading posts
-- Protected routes for creating/updating/deleting posts
-- Owner-based authorization rules for posts (or `admin` override)
-- Optional admin user seeding via configuration
-- Unit + integration tests with high coverage
+- **JWT Authentication** — Login endpoint (`/auth/token`) with HS256 tokens
+- **Public & Protected Routes** — Read posts without auth; create/update/delete require login
+- **Owner-based Authorization** — Users can only modify their own posts; admin overrides
+- **Domain Exceptions** — Service layer uses protocol-agnostic exceptions; controllers translate to HTTP
+- **Middleware Stack** — Request logging with IDs, security headers (CSP, X-Frame-Options, etc), CORS
+- **Alembic Migrations** — Version-controlled schema evolution with autogenerate support
+- **Optional Admin Seeding** — Auto-create admin user via configuration
+- **Comprehensive Tests** — 37+ unit & integration tests with 99% coverage
 
 ## Architecture
 
-Layered structure:
+Clean layered structure with clear separation of concerns:
 
-- `src/controllers`: HTTP endpoints and dependency composition
-- `src/services`: business rules
-- `src/models`: SQLAlchemy table definitions
-- `src/schemas`: input contracts (Pydantic)
-- `src/views`: output contracts
-- `src/dependencies`: reusable authentication/authorization dependencies
-- `src/utils`: utilities (JWT and password helpers)
-- `src/config.py`: environment-based settings
+- **Controllers** (`src/controllers/`) — HTTP endpoints; catch domain exceptions and translate to HTTP responses
+- **Services** (`src/services/`) — Business logic; raise domain exceptions (protocol-agnostic)
+- **Exceptions** (`src/exceptions.py`) — Domain-level exceptions: `NotFoundError`, `ForbiddenError`, `ConflictError`, `UnauthorizedError`
+- **Middleware** (`src/middleware.py`) — Request logging with unique IDs, security headers, CORS
+- **Models** (`src/models/`) — SQLAlchemy Core table definitions
+- **Schemas** (`src/schemas/`) — Pydantic input contracts
+- **Views** (`src/views/`) — Output contracts
+- **Dependencies** (`src/dependencies.py`) — Reusable auth/authz logic
+- **Utils** (`src/utils/`) — JWT and password utilities
+- **Config** (`src/config.py`) — Environment-based settings with production safety checks
+- **Migrations** (`migrations/`) — Alembic version-controlled schema evolution
 
 ## Requirements
 
@@ -133,22 +138,81 @@ curl -s 'http://127.0.0.1:8000/posts/?published=true&skip=0&limit=10'
 	- allowed for `admin`;
 	- all other users receive `403`.
 
-## Tests
+## Exception Handling & Error Translation
 
-Run tests:
+The architecture separates domain logic from HTTP concerns:
+
+- **Services** raise domain exceptions: `NotFoundError`, `ForbiddenError`, `ConflictError`, `UnauthorizedError`
+- **Controllers** catch these exceptions and translate them to HTTP responses:
+	- `NotFoundError` → `404 Not Found`
+	- `ForbiddenError` → `403 Forbidden`
+	- `ConflictError` → `409 Conflict`
+	- `UnauthorizedError` → `401 Unauthorized`
+
+This allows services to remain framework-agnostic and testable in isolation.
+
+## Middleware Stack
+
+The application includes a comprehensive middleware stack:
+
+1. **RequestLoggerMiddleware** — Logs all requests/responses with unique `X-Request-ID` header, method, path, status code, and latency
+2. **SecurityHeadersMiddleware** — Adds security headers: `X-Frame-Options: DENY`, CSP, `X-XSS-Protection`, `Referrer-Policy`
+3. **CORSMiddleware** — Allows configured origins (localhost in dev; Render domain in production)
+
+All responses include `X-Request-ID` for distributed tracing.
+
+## Database Migrations
+
+This project uses **Alembic** for schema evolution:
 
 ```zsh
-poetry run pytest -q
+# Create a new migration (auto-detects changes)
+poetry run alembic revision --autogenerate -m "Add new column"
+
+# Apply all pending migrations
+poetry run alembic upgrade head
+
+# Rollback one migration
+poetry run alembic downgrade -1
+
+# Check current migration status
+poetry run alembic current
 ```
 
-Run with coverage:
+The first migration (`a1b2c3d4e5f6`) sets up the `users` and `posts` tables with proper constraints.
+
+## Tests
+
+Run all tests:
+
+```zsh
+poetry run pytest -v
+```
+
+Run with coverage report:
 
 ```zsh
 poetry run pytest --cov=src --cov-report=term-missing -q
 ```
 
+Current coverage: **37 tests, 99% coverage**
+
+Test files:
+- `tests/unit/test_auth.py` — JWT and password utilities
+- `tests/unit/test_config.py` — Settings and environment validation
+- `tests/unit/test_dependencies.py` — Authentication dependency edge cases
+- `tests/unit/test_controller_exceptions.py` — HTTP exception translation
+- `tests/unit/test_middleware.py` — Request logging and security headers
+- `tests/unit/test_post_service.py` — Post service logic and ownership
+- `tests/unit/test_user_service.py` — User creation and authentication
+- `tests/unit/test_main_lifespan.py` — App startup/shutdown lifecycle
+- `tests/integration/test_api_flow.py` — End-to-end API flows
+
 ## Recommended Next Steps
 
-- Add Alembic migrations for production schema evolution
-- Add observability (structured logs and tracing)
+- Add pagination to `GET /posts/` (limit/offset implemented, docs pending)
+- Add rate limiting with `slowapi`
 - Implement refresh tokens and JWT secret rotation
+- Add structured logging (e.g., `python-json-logger`)
+- Switch from SQLite to PostgreSQL for persistent production data
+- Add request/response validation middleware
